@@ -9,7 +9,12 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler'
 export function createApp() {
   const app = express()
 
-  app.use(helmet())
+  app.use(
+    helmet({
+      // Default "same-origin" blocks browsers from reading cross-origin API responses.
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  )
   app.use(cors(getCorsOptions()))
   app.use(morgan('dev'))
   app.use(express.json({ limit: '2mb' }))

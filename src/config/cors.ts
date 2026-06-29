@@ -10,11 +10,16 @@ function isAllowedOrigin(origin: string): boolean {
     return true
   }
 
-  if (env.NODE_ENV !== 'production') {
-    return LOCALHOST_ORIGIN.test(origin) || LOCAL_NETWORK_ORIGIN.test(origin)
+  // Local dev against a remote API (e.g. Render) uses localhost or 127.0.0.1.
+  if (LOCALHOST_ORIGIN.test(origin) || LOCAL_NETWORK_ORIGIN.test(origin)) {
+    return true
   }
 
-  return RENDER_ORIGIN.test(origin)
+  if (env.NODE_ENV === 'production' && RENDER_ORIGIN.test(origin)) {
+    return true
+  }
+
+  return false
 }
 
 export function getCorsOptions(): CorsOptions {
@@ -37,12 +42,13 @@ export function getCorsOptions(): CorsOptions {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   }
 }
 
 export function logCorsConfig(): void {
   console.log(`CORS origins: ${corsOrigins.join(', ')}`)
+  console.log('CORS also allows: http://localhost:*, http://127.0.0.1:*')
   if (env.NODE_ENV === 'production') {
     console.log('CORS also allows: https://*.onrender.com')
   }
