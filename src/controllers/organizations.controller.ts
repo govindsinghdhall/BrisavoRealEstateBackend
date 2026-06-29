@@ -4,6 +4,7 @@ import { PERMISSIONS } from '../constants/permissions'
 import {
   getOrganizationById,
   serializeOrganization,
+  updateOrganizationById,
 } from '../services/organization.service'
 import { success } from '../utils/response'
 
@@ -42,16 +43,7 @@ export async function updateCurrentOrganization(req: Request, res: Response, nex
     }
 
     const payload = updateOrganizationSchema.parse(req.body)
-    const organization = await getOrganizationById(req.auth.organizationId)
-
-    if (payload.name !== undefined) organization.name = payload.name
-    if (payload.logo !== undefined) organization.logo = payload.logo
-    if (payload.email !== undefined) organization.email = payload.email
-    if (payload.phone !== undefined) organization.phone = payload.phone
-    if (payload.address !== undefined) organization.address = payload.address
-    if (payload.settings !== undefined) organization.settings = payload.settings
-
-    await organization.save()
+    const organization = await updateOrganizationById(req.auth.organizationId, payload)
     return success(res, serializeOrganization(organization), 'Organization updated')
   } catch (error) {
     next(error)

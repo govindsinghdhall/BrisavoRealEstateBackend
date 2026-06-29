@@ -1,0 +1,202 @@
+import type { Request, Response, NextFunction } from 'express'
+import { z } from 'zod'
+import {
+  createProperty,
+  deleteProperty,
+  getInventory,
+  getPropertyById,
+  listProperties,
+  serializeProperty,
+  updateProperty,
+} from '../services/property.service'
+import { buildPaginationMeta, success, successPaginated } from '../utils/response'
+import { AppError } from '../utils/errors'
+
+function paramId(value: string | string[]): number {
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = Number(raw)
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new AppError('Invalid ID', 400)
+  }
+
+  return id
+}
+
+const propertyBodySchema = z.object({
+  title: z.string().min(1),
+  description: z.string().nullable().optional(),
+  listingCategory: z.string().optional(),
+  type: z.string().min(1),
+  status: z.string().optional(),
+  price: z.coerce.number().nonnegative(),
+  area: z.coerce.number().nonnegative(),
+  carpetArea: z.coerce.number().nonnegative().nullable().optional(),
+  builtUpArea: z.coerce.number().nonnegative().nullable().optional(),
+  superArea: z.coerce.number().nonnegative().nullable().optional(),
+  bedrooms: z.coerce.number().int().nonnegative().nullable().optional(),
+  bathrooms: z.coerce.number().int().nonnegative().nullable().optional(),
+  address: z.string().min(1),
+  city: z.string().min(1),
+  state: z.string().min(1),
+  pincode: z.string().nullable().optional(),
+  locality: z.string().optional(),
+  sector: z.string().nullable().optional(),
+  landmark: z.string().nullable().optional(),
+  latitude: z.coerce.number().nullable().optional(),
+  longitude: z.coerce.number().nullable().optional(),
+  builderName: z.string().nullable().optional(),
+  propertyAge: z.string().nullable().optional(),
+  furnishing: z.string().nullable().optional(),
+  facing: z.string().nullable().optional(),
+  possessionStatus: z.string().nullable().optional(),
+  possessionDate: z.string().nullable().optional(),
+  roiPotential: z.coerce.number().nullable().optional(),
+  isVerified: z.boolean().optional(),
+  hasRera: z.boolean().optional(),
+  reraId: z.string().nullable().optional(),
+  videoTourUrl: z.string().nullable().optional(),
+  virtualTourUrl: z.string().nullable().optional(),
+  brochureUrl: z.string().nullable().optional(),
+  amenities: z.array(z.string()).optional(),
+  isActive: z.boolean().optional(),
+})
+
+function normalizePayload(payload: z.infer<typeof propertyBodySchema>) {
+  return {
+    ...payload,
+    listingCategory: payload.listingCategory?.toUpperCase(),
+    type: payload.type.toUpperCase(),
+    status: payload.status?.toUpperCase() ?? 'AVAILABLE',
+    propertyAge: payload.propertyAge?.toUpperCase() ?? null,
+    furnishing: payload.furnishing?.toUpperCase() ?? null,
+    facing: payload.facing?.toUpperCase() ?? null,
+    possessionStatus: payload.possessionStatus?.toUpperCase() ?? null,
+  }
+}
+
+export async function getPropertyInventory(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    const inventory = await getInventory(req.auth.organizationId)
+    return success(res, inventory)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function listOrganizationProperties(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    const page = Math.max(1, Number(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20))
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined
+    const type = typeof req.query.type === 'string' ? req.query.type : undefined
+    const city = typeof req.query.city === 'string' ? req.query.city : undefined
+    const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : undefined
+    const sortOrder = req.query.sortOrder === 'asc' ? 'asc' : 'desc'
+
+    const { properties, total } = await listProperties(req.auth.organizationId, {
+      page,
+      limit,
+      search,
+      status,
+      type,
+      city,
+      sortBy,
+      sortOrder,
+    })
+
+    const data = properties.map(serializeProperty)
+    return successPaginated(res, data, buildPaginationMeta(page, limit, total))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function getOrganizationProperty(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    const property = await getPropertyById(paramId(req.params.id), req.auth.organizationId)
+    return success(res, serializeProperty(property))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function createOrganizationProperty(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    const payload = normalizePayload(propertyBodySchema.parse(req.body))
+    const property = await createProperty(req.auth.organizationId, payload)
+    return success(res, serializeProperty(property), 'Property created', 201)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function updateOrganizationProperty(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    const parsed = propertyBodySchema.partial().parse(req.body)
+    const payload: Record<string, unknown> = { ...parsed }
+    if (parsed.listingCategory) payload.listingCategory = parsed.listingCategory.toUpperCase()
+    if (parsed.type) payload.type = parsed.type.toUpperCase()
+    if (parsed.status) payload.status = parsed.status.toUpperCase()
+    if (parsed.propertyAge) payload.propertyAge = parsed.propertyAge.toUpperCase()
+    if (parsed.furnishing) payload.furnishing = parsed.furnishing.toUpperCase()
+    if (parsed.facing) payload.facing = parsed.facing.toUpperCase()
+    if (parsed.possessionStatus) payload.possessionStatus = parsed.possessionStatus.toUpperCase()
+
+    const property = await updateProperty(
+      paramId(req.params.id),
+      req.auth.organizationId,
+      payload,
+    )
+    return success(res, serializeProperty(property), 'Property updated')
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function deleteOrganizationProperty(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    await deleteProperty(paramId(req.params.id), req.auth.organizationId)
+    return success(res, null, 'Property deleted')
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function uploadPropertyImagesBatch(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' })
+    }
+
+    await getPropertyById(paramId(req.params.id), req.auth.organizationId)
+    return success(res, [], 'Image upload is not configured yet', 201)
+  } catch (error) {
+    next(error)
+  }
+}

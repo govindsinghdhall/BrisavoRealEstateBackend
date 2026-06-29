@@ -3,6 +3,14 @@ import authRoutes from './auth.routes'
 import usersRoutes from './users.routes'
 import rolesRoutes from './roles.routes'
 import organizationsRoutes from './organizations.routes'
+import propertiesRoutes from './properties.routes'
+import leadsRoutes from './leads.routes'
+import contactsRoutes from './contacts.routes'
+import siteVisitsRoutes from './siteVisits.routes'
+import bookingsRoutes from './bookings.routes'
+import leadSourcesRoutes from './leadSources.routes'
+import propertyLookupsRoutes from './propertyLookups.routes'
+import reportsRoutes from './reports.routes'
 
 const router = Router()
 
@@ -14,5 +22,13 @@ router.use('/auth', authRoutes)
 router.use('/users', usersRoutes)
 router.use('/roles', rolesRoutes)
 router.use('/organizations', organizationsRoutes)
+router.use('/properties', propertiesRoutes)
+router.use('/leads', leadsRoutes)
+router.use('/contacts', contactsRoutes)
+router.use('/site-visits', siteVisitsRoutes)
+router.use('/bookings', bookingsRoutes)
+router.use('/lead-sources', leadSourcesRoutes)
+router.use('/property-lookups', propertyLookupsRoutes)
+router.use('/reports', reportsRoutes)
 
 export default router

@@ -82,6 +82,56 @@ export async function getOrganizationById(organizationId: number) {
   return organization
 }
 
+async function generateUniqueSlugForUpdate(baseName: string, organizationId: number): Promise<string> {
+  const base = slugify(baseName) || 'organization'
+  let slug = base
+  let counter = 1
+
+  while (await Organization.exists({ slug, _id: { $ne: organizationId } })) {
+    slug = `${base}-${counter}`
+    counter += 1
+  }
+
+  return slug
+}
+
+export async function updateOrganizationById(
+  organizationId: number,
+  payload: {
+    name?: string
+    logo?: string | null
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+    settings?: IOrganization['settings']
+  },
+) {
+  const updates: Record<string, unknown> = {}
+
+  if (payload.name !== undefined) {
+    updates.name = payload.name
+    updates.slug = await generateUniqueSlugForUpdate(payload.name, organizationId)
+  }
+  if (payload.logo !== undefined) updates.logo = payload.logo
+  if (payload.email !== undefined) updates.email = payload.email?.toLowerCase() ?? null
+  if (payload.phone !== undefined) updates.phone = payload.phone
+  if (payload.address !== undefined) updates.address = payload.address
+  if (payload.settings !== undefined) updates.settings = payload.settings
+
+  const organization = await Organization.findOneAndUpdate(
+    { _id: organizationId },
+    { $set: updates },
+    { new: true, runValidators: true },
+  )
+
+  if (!organization) {
+    const { NotFoundError } = await import('../utils/errors')
+    throw new NotFoundError('Organization not found')
+  }
+
+  return organization
+}
+
 export function serializeOrganization(organization: IOrganization) {
   return {
     id: organization._id,

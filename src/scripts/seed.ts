@@ -8,17 +8,37 @@ import { hashPassword } from '../utils/password'
 
 config()
 
-const DEMO_ORG_SLUG = 'realestate-crm-demo'
+const DEMO_ORG_NAME = 'Durga Property'
+const DEMO_ORG_SLUG = 'durga-property'
+const LEGACY_DEMO_SLUG = 'realestate-crm-demo'
 const DEMO_EMAIL = 'admin@realestatecrm.com'
 const DEMO_PASSWORD = 'Admin@123'
 
+async function migrateLegacyDemoOrganization() {
+  const legacyOrg = await Organization.findOne({ slug: LEGACY_DEMO_SLUG })
+  if (!legacyOrg) return
+
+  legacyOrg.name = DEMO_ORG_NAME
+  legacyOrg.slug = DEMO_ORG_SLUG
+  legacyOrg.settings = {
+    ...legacyOrg.settings,
+    tagline: 'Your real estate business, organized.',
+  }
+  await legacyOrg.save()
+  console.log(`Migrated legacy demo organization to "${DEMO_ORG_NAME}"`)
+}
+
 export async function seedDemoOrganization() {
+  await migrateLegacyDemoOrganization()
+
   const existingUser = await User.findOne({ email: DEMO_EMAIL })
   if (existingUser) {
     return
   }
 
-  const existingOrg = await Organization.findOne({ slug: DEMO_ORG_SLUG })
+  const existingOrg =
+    (await Organization.findOne({ slug: DEMO_ORG_SLUG })) ??
+    (await Organization.findOne({ slug: LEGACY_DEMO_SLUG }))
   if (existingOrg) {
     const adminRole = await Role.findOne({ organizationId: existingOrg._id, name: 'admin' })
     if (!adminRole) {
@@ -45,10 +65,10 @@ export async function seedDemoOrganization() {
   }
 
   const organization = await Organization.create({
-    name: 'Real Estate CRM Demo',
+    name: DEMO_ORG_NAME,
     slug: DEMO_ORG_SLUG,
     email: DEMO_EMAIL,
-    settings: { tagline: 'Demo organization for local development' },
+    settings: { tagline: 'Your real estate business, organized.' },
   })
 
   await seedOrganizationDefaults(organization._id)
