@@ -1,9 +1,11 @@
 import { createApp } from './app'
 import { connectDatabase } from './config/database'
+import { logCorsConfig } from './config/cors'
 import { env } from './config/env'
 import { seedDemoOrganization } from './scripts/seed'
 
 async function bootstrap() {
+  logCorsConfig()
   await connectDatabase()
   await seedDemoOrganization()
 
