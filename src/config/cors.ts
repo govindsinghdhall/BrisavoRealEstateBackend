@@ -4,6 +4,7 @@ import { corsOrigins, env } from './env'
 const LOCALHOST_ORIGIN = /^https?:\/\/localhost(:\d+)?$/
 const LOCAL_NETWORK_ORIGIN = /^https?:\/\/127\.0\.0\.1(:\d+)?$/
 const RENDER_ORIGIN = /^https:\/\/[a-z0-9-]+\.onrender\.com$/
+const DURGAPROPERTY_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*durgaproperty\.com$/
 
 function isAllowedOrigin(origin: string): boolean {
   if (corsOrigins.includes(origin)) {
@@ -15,8 +16,11 @@ function isAllowedOrigin(origin: string): boolean {
     return true
   }
 
-  if (env.NODE_ENV === 'production' && RENDER_ORIGIN.test(origin)) {
-    return true
+  if (env.NODE_ENV === 'production') {
+    return (
+      RENDER_ORIGIN.test(origin) ||
+      DURGAPROPERTY_ORIGIN.test(origin)
+    )
   }
 
   return false
@@ -50,6 +54,6 @@ export function logCorsConfig(): void {
   console.log(`CORS origins: ${corsOrigins.join(', ')}`)
   console.log('CORS also allows: http://localhost:*, http://127.0.0.1:*')
   if (env.NODE_ENV === 'production') {
-    console.log('CORS also allows: https://*.onrender.com')
+    console.log('CORS also allows: https://*.onrender.com, https://*.durgaproperty.com')
   }
 }
